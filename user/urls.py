@@ -1,12 +1,11 @@
-from django.urls import path
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
-from .views import UserRegistrationView, UserProfileView,LoginView
+# urls.py
+from django.urls import path, include
+from .views import google_login
+from .views import google_callback
 
 urlpatterns = [
-    path('auth/register/', UserRegistrationView.as_view(), name='register'),
-    path('auth/profile/', UserProfileView.as_view(), name='user_profile'),
-    path('login/', LoginView.as_view(), name='login'),
+    # 구글 소셜로그인
+    path('google/login/', google_login, name='google_login'),
+    path('google/callback/', google_callback, name='google_callback'),
+    # path('google/login/finish/', GoogleLogin.as_view(), name='google_login_todjango'),
 ]

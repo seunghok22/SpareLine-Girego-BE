@@ -1,94 +1,78 @@
-from rest_framework import status, permissions
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.decorators import permission_classes
-from .serializers import UserRegistrationSerializer, UserProfileSerializer
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.views import View
+from django.shortcuts import redirect
 from django.http import JsonResponse
-from django.contrib.auth import authenticate, login
-from rest_framework.permissions import AllowAny
+from django.core.exceptions import ValidationError
+from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-import json
+from json.decoder import JSONDecodeError
+import requests
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from dotenv import load_dotenv
+import os
+from allauth.socialaccount.models import SocialAccount
+from .serializers import UserProfileSerializer
 
-class UserRegistrationView(APIView):
-    permission_classes = (permissions.AllowAny,)
+
+User = get_user_model()
+load_dotenv()
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+
+# 로그인 페이지 연결
+def google_login(request):
+   scope = os.getenv('GOOGLE_SCOPE_USERINFO')        # + "https://www.googleapis.com/auth/drive.readonly" 등 scope 설정 후 자율적으로 추가
+   return redirect(f"{os.getenv('GOOGLE_REDIRECT')}?client_id={os.getenv('GOOGLE_CLIENT_ID')}&response_type=code&redirect_uri={os.getenv('GOOGLE_REDIRECT')}&scope={scope}")
+
+# 인가 코드를 받아 로그인 처리
+def google_callback(request):
+    code = request.GET.get("code")      # Query String 으로 넘어옴
     
-    def post(self, request):
-        serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            return Response(
-                {"message": "User registered successfully"},
-                status=status.HTTP_201_CREATED
+    token_req = requests.post(f"https://oauth2.googleapis.com/token?client_id={os.getenv('GOOGLE_CLIENT_ID')}&client_secret={os.getenv('GOOGLE_CLIENT_SECRET')}&code={code}&grant_type=authorization_code&redirect_uri={os.getenv('GOOGLE_REDIRECT')}")
+    token_req_json = token_req.json()
+    error = token_req_json.get("error")
+
+    if error is not None:
+        raise JSONDecodeError(error)
+
+    google_access_token = token_req_json.get('access_token')
+
+    email_response = requests.get(f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={google_access_token}")
+    res_status = email_response.status_code
+
+    if res_status != 200:
+        return JsonResponse({"status": 400,"message": "Bad Request"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    email_res_json = email_response.json()
+    email = email_res_json.get('email')
+	
+    try:
+        user = User.objects.get(email=email)
+        if user is None: #계정이 없으면 추가하기기
+            return JsonResponse({"status": 404,"message": "User Account Not Exists"}, status=status.HTTP_404_NOT_FOUND) 
+        
+        # 소셜로그인 계정 유무 확인
+        social_user = SocialAccount.objects.get(user=user)  
+        if social_user.provider != "google":
+            return JsonResponse({"status": 400,"message": "User Account Not Exists"}, status=status.HTTP_400_BAD_REQUEST) 
+            
+        token = RefreshToken.for_user(user)
+        refresh_token = str(token)
+        access_token = str(token.access_token)
+		
+        res = JsonResponse(
+                {
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                    },
+                    "message": "login success",
+                    "token": {
+                        "access_token": access_token,
+                        "refresh_token": refresh_token,
+                    },
+                },
+                status=status.HTTP_200_OK,
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class UserProfileView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get(self, request):
-        serializer = UserProfileSerializer(request.user)
-        return Response(serializer.data)
-    
-    def put(self, request):
-        serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-@method_decorator(csrf_exempt, name='dispatch')
-class LoginView(View):
-    @permission_classes([AllowAny])
-    def post(self, request):
-        print(request.body)
-        try:
-            data = json.loads(request.body)
-            email = data.get('username')
-            password = data.get('password')
-            print(email)
-            print(password)
-
-            if not email or not password:
-                return JsonResponse({
-                    'error': 'Email and password are required.'
-                }, status=400)
-            print("auth")
-            
-            user = authenticate(request, username=email, password=password)
-            
-            if user is None:
-                return JsonResponse({
-                    'error': 'Invalid email or password.'
-                }, status=401)
-
-            if not user.is_active:
-                return JsonResponse({
-                    'error': 'Please verify your email before logging in.'
-                }, status=403)
-
-            # # FCM 토큰 업데이트
-            # if fcm_token:
-            #     user.fcm_token = fcm_token
-            #     user.save()
-
-            # JWT 토큰 생성
-            refresh = RefreshToken.for_user(user)
-            tokens = {
-                'refresh_token': str(refresh),
-                'access_token': str(refresh.access_token),
-            }
-
-            # 로그인 처리
-            login(request, user)
-
-            return JsonResponse(tokens, status=200)
-
-        except Exception as e:
-            return JsonResponse({
-                'error': str(e)
-            }, status=500)
+        return res
+    except:
+        serializer = UserProfileSerializer(data=request.data)
+        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
