@@ -15,7 +15,7 @@ class UserProfile(models.Model):
         db_index=True
     )
     description= ArrayField(
-        models.IntegerField(),
+        models.TextField(max_length=100),
         blank=True,
         null=True
     )
@@ -39,7 +39,7 @@ class UserProfile(models.Model):
         blank=True,
         null=True
     )
-    additionalInfo = models.JSONField(default='{}')
+    additionalInfo = models.JSONField(default=dict)
     
     class Meta:
         db_table = 'user_profile'

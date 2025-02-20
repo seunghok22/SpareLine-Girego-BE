@@ -17,16 +17,15 @@ from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-AUTH_USER_MODEL = 'user.User'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 REST_USE_JWT = True
 
 ACCOUNT_EMAIL_REQUIRED = True            # email 필드 사용 o
-ACCOUNT_USERNAME_REQUIRED = True         # username 필드 사용 o
-ACCOUNT_AUTHENTICATION_METHOD = "email"
-
+ACCOUNT_USERNAME_REQUIRED = False         # username 필드 사용 o
+ACCOUNT_LOGIN_METHODS = {'email'}
+APPEND_SLASH = False
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-r&k1^m*!(e^gfvkeaybpguhaobcp%#=&-lv=8$d9q5dj4u(-!*'
@@ -50,22 +49,21 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
-    'user',
+    'account.apps.AccountConfig',
+    'userprofile.apps.userprofileConfig',
+    'django.contrib.sites',
     'rest_framework',
     'rest_framework_simplejwt',
     'oauth2_provider',
-]
-
-THIRD_PARTY_APPS = [
-    'rest_framework',
-    'rest_framework.authtoken',
-    'rest_framework_simplejwt',
-    'dj_rest_auth',
-    'dj_rest_auth.registration',
-
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+]
+
+THIRD_PARTY_APPS = [
+    'rest_framework.authtoken',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
     'allauth.socialaccount.providers.google',
 ]
 
@@ -114,11 +112,11 @@ from dotenv import load_dotenv
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_NAME'),
-        'USER': os.environ.get('POSTGRES_USER'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
-        'HOST': 'db',
-        'PORT': 5432,
+        'NAME': 'be',
+        'USER': 'sktflyai',
+        'PASSWORD': '123456',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -135,19 +133,19 @@ SIMPLE_JWT= {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# # AWS S3 settings
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', default='ap-northeast-2')
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-AWS_DEFAULT_ACL = None  # 'public-read'에서 None으로 변경
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
+# # # AWS S3 settings
+# AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+# AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+# AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+# AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', default='ap-northeast-2')
+# AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+# AWS_DEFAULT_ACL = None  # 'public-read'에서 None으로 변경
+# AWS_S3_OBJECT_PARAMETERS = {
+#     'CacheControl': 'max-age=86400',
+# }
 
-AWS_S3_FILE_OVERWRITE = False
-AWS_QUERYSTRING_AUTH = False
+# AWS_S3_FILE_OVERWRITE = False
+# AWS_QUERYSTRING_AUTH = False
 
 
 # Password validation
@@ -197,4 +195,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # image
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-

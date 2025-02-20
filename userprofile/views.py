@@ -1,6 +1,8 @@
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import UserProfileSerializer
+from django.shortcuts import get_object_or_404
+from .models import UserProfile
 
 def create_userprofile(request):
     try:
@@ -37,3 +39,20 @@ def create_userprofile(request):
         return Response({
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def load_profile(request):
+    try:
+        user_id = request.query_params.get('userID')
+        if not user_id:
+            return Response({'error': 'userID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile = get_object_or_404(UserProfile, userID=user_id)
+        serializer = UserProfileSerializer(profile)
+
+        return Response({
+            'message': 'UserProfile retrieved successfully',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -18,11 +18,12 @@ from django.urls import path
 from django.urls.conf import include
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("user/", include("allauth.urls")),
+    path("account/", include("account.urls")),
+    path("account/", include("allauth.urls")),
+        
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # 미디어 파일 제공 설정
